@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kasir - Penjualan Cepat (KISS POS)</title>
+  <style>
+    /* Styling Cepat, Bersih, Kontras Tinggi & 100% Offline */
+    :root {
+      --primary: #059669;
+      --primary-hover: #047857;
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --success: #16a34a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* 1. Header & Navigasi */
+    .navbar {
+      background-color: #0f172a;
+      color: #ffffff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-badge {
+      background: var(--primary);
+      color: white;
+      font-weight: 900;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-item {
+      color: #94a3b8;
+      background: #1e293b;
+      text-decoration: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 13px;
+      border: 1px solid #334155;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-item:hover {
+      background: #334155;
+      color: white;
+    }
+
+    .nav-item.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* 2. Layout Grid Utama Kasir (Kiri Keranjang, Kanan Panel Pembayaran) */
+    .kasir-container {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 16px;
+      padding: 16px;
+      flex: 1;
+      height: calc(100vh - 56px);
+      overflow: hidden;
+    }
+
+    @media (max-width: 900px) {
+      body {
+        height: auto;
+        overflow-y: auto;
+      }
+      .kasir-container {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+    }
+
+    /* Sisi Kiri: Scan & Tabel Keranjang */
+    .panel-left {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Kotak Pencarian Barcode / Nama */
+    .search-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      position: relative;
+    }
+
+    .search-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .search-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      outline: none;
+      transition: border 0.15s;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+    }
+
+    /* Dropdown Hasil Pencarian Jika Ada Banyak Barang Cocok */
+    .search-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 14px;
+      right: 14px;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+      z-index: 50;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+      margin-top: 4px;
+      display: none;
+    }
+
+    .dropdown-item {
+      padding: 10px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .dropdown-item:hover, .dropdown-item.selected {
+      background: #ecfdf5;
+    }
+
+    /* Tabel Keranjang Belanja */
+    .cart-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .cart-header {
+      padding: 12px 16px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cart-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #1e293b;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-clear-cart {
+      background: transparent;
+      border: none;
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .btn-clear-cart:hover {
+      background: #fee2e2;
+    }
+
+    .cart-table-wrapper {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: var(--text-muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.5px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background-color: #f8fafc;
+    }
+
+    /* Kontrol Qty (+ / -) */
+    .qty-control {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-qty {
+      width: 32px;
+      height: 32px;
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #334155;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-qty:hover {
+      background: #e2e8f0;
+    }
+
+    .qty-input {
+      width: 50px;
+      text-align: center;
+      font-weight: 700;
+      font-size: 15px;
+      padding: 6px 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      outline: none;
+    }
+
+    .qty-input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-del {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .btn-del:hover {
+      color: var(--danger);
+      background: #fee2e2;
+    }
+
+    /* Sisi Kanan: Panel Pembayaran */
+    .panel-right {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .pay-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      height: 100%;
+    }
+
+    /* Box Total Belanja Sangat Besar */
+    .total-box {
+      background: #0f172a;
+      color: white;
+      border-radius: 10px;
+      padding: 20px;
+      text-align: right;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .total-label {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+
+    .total-nominal {
+      font-size: 42px;
+      font-weight: 900;
+      color: #34d399;
+      line-height: 1.1;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", monospace;
+    }
+
+    .pay-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pay-label {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #334155;
+    }
+
+    .pay-input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      font-size: 26px;
+      font-weight: 800;
+      color: #0f172a;
+      text-align: right;
+      outline: none;
+      font-family: monospace;
+    }
+
+    .pay-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2);
+    }
+
+    /* Tombol Cepat Pecahan Uang Tunai */
+    .cash-chips {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .chip-btn {
+      padding: 8px 4px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #334155;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.1s;
+    }
+
+    .chip-btn:hover {
+      background: #e2e8f0;
+      border-color: #94a3b8;
+    }
+
+    /* Box Kembalian */
+    .change-box {
+      background: #f8fafc;
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+    }
+
+    .change-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #475569;
+    }
+
+    .change-nominal {
+      font-size: 24px;
+      font-weight: 900;
+      color: var(--success);
+      font-family: monospace;
+    }
+
+    /* Tombol Besar Proses Transaksi */
+    .btn-proses-transaksi {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 18px;
+      font-size: 18px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(5, 150, 105, 0.3);
+      transition: all 0.15s;
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-proses-transaksi:hover:not(:disabled) {
+      background: var(--primary-hover);
+      box-shadow: 0 6px 10px -1px rgba(5, 150, 105, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-proses-transaksi:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+      opacity: 0.8;
+    }
+
+    /* Toast Notifikasi Ringan */
+    .toast {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: #0f172a;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 999;
+      display: none;
+      font-weight: 600;
+      font-size: 14px;
+      border-left: 5px solid var(--primary);
+    }
+
+    /* Modal Nota Berhasil */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: white;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+      overflow: hidden;
+      animation: modalFade 0.2s ease-out;
+    }
+
+    @keyframes modalFade {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+      background: #0f172a;
+      color: white;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .receipt-paper {
+      background: #fffff8;
+      border: 1px dashed #cbd5e1;
+      padding: 16px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      color: #000;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      cursor: pointer;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #334155; color: white; }
+
+    /* Utility */
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .font-bold { font-weight: 700; }
+    .text-muted { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Notifikasi Ringkas -->
+  <div id="toast" class="toast"></div>
+
+  <!-- 1. Navigasi Atas -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-badge">POS</div>
+      <div class="brand-title">Kasir Penjualan Cepat (KISS)</div>
+    </div>
+    <nav class="nav-links">
+      <a href="/gudang" class="nav-item">📦 Halaman Gudang</a>
+      <a href="/kasir" class="nav-item active">🛒 Halaman Kasir</a>
+    </nav>
+  </header>
+
+  <!-- 2. Grid Utama Kasir -->
+  <main class="kasir-container">
+
+    <!-- SISI KIRI: PENCARIAN BARANG & TABEL KERANJANG -->
+    <section class="panel-left">
+      
+      <!-- 1. Kolom Pencarian Cepat (Barcode / Nama) -->
+      <div class="search-card">
+        <label for="search-input" class="search-label">
+          Scan Barcode / Cari Barang (Tekan ENTER Langsung Masuk Keranjang):
+        </label>
+        <div class="search-row">
+          <input 
+            type="text" 
+            id="search-input" 
+            class="search-input" 
+            placeholder="Ketik nama atau scan barcode fisik lalu tekan ENTER..."
+            autocomplete="off"
+            autofocus
+          >
+          <button type="button" class="btn btn-secondary" onclick="cariDanTambahBarang()">+ Tambah</button>
+        </div>
+
+        <!-- Dropdown jika hasil pencarian lebih dari 1 barang -->
+        <div id="search-dropdown" class="search-dropdown"></div>
+      </div>
+
+      <!-- 2. Tabel Keranjang Belanja -->
+      <div class="cart-card">
+        <div class="cart-header">
+          <span class="cart-title">
+            🛒 Daftar Keranjang Belanja (<span id="cart-item-count">0</span> barang)
+          </span>
+          <button class="btn-clear-cart" onclick="kosongkanKeranjang()" title="Kosongkan Keranjang">
+            🗑️ Kosongkan Keranjang
+          </button>
+        </div>
+
+        <div class="cart-table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 130px;">Kode Barcode</th>
+                <th>Nama Barang</th>
+                <th class="text-right" style="width: 120px;">Harga Satuan</th>
+                <th class="text-center" style="width: 140px;">Jumlah / Qty</th>
+                <th class="text-right" style="width: 130px;">Subtotal</th>
+                <th style="width: 50px;"></th>
+              </tr>
+            </thead>
+            <tbody id="cart-table-body">
+              <tr>
+                <td colspan="6" class="text-center text-muted" style="padding: 40px;">
+                  Keranjang masih kosong.<br>Scan barcode atau ketik nama barang di atas.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- SISI KANAN: PANEL PEMBAYARAN -->
+    <section class="panel-right">
+      <div class="pay-card">
+        
+        <!-- 3. Total Belanja Huruf Sangat Besar -->
+        <div class="total-box">
+          <div class="total-label">TOTAL BELANJA</div>
+          <div class="total-nominal" id="display-total-belanja">Rp 0</div>
+        </div>
+
+        <!-- Input Uang Diterima -->
+        <div class="pay-form-group">
+          <label for="input-bayar" class="pay-label">Uang Diterima (Rp):</label>
+          <input 
+            type="number" 
+            id="input-bayar" 
+            class="pay-input" 
+            placeholder="0"
+            min="0"
+            oninput="hitungKembalianOtomatis()"
+          >
+        </div>
+
+        <!-- Tombol Pecahan Cepat Uang Tunai -->
+        <div class="cash-chips">
+          <button type="button" class="chip-btn" onclick="setUangPas()">Uang Pas</button>
+          <button type="button" class="chip-btn" onclick="tambahUang(10000)">+10.000</button>
+          <button type="button" class="chip-btn" onclick="tambahUang(20000)">+20.000</button>
+          <button type="button" class="chip-btn" onclick="tambahUang(50000)">+50.000</button>
+          <button type="button" class="chip-btn" onclick="tambahUang(100000)">+100.000</button>
+          <button type="button" class="chip-btn" onclick="tambahUang(200000)">+200.000</button>
+        </div>
+
+        <!-- Perhitungan Kembalian Otomatis -->
+        <div class="change-box" id="change-box">
+          <span class="change-label" id="label-kembali">KEMBALIAN:</span>
+          <span class="change-nominal" id="display-kembalian">Rp 0</span>
+        </div>
+
+        <!-- Tombol Besar Proses Transaksi (Selesai) -->
+        <button 
+          type="button" 
+          id="btn-proses" 
+          class="btn-proses-transaksi" 
+          onclick="prosesTransaksiKasir()"
+          disabled
+        >
+          ✅ PROSES TRANSAKSI [F2]
+        </button>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- MODAL: STRUK TRANSAKSI SELESAI -->
+  <!-- ========================================================= -->
+  <div id="modal-struk" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 style="font-size: 16px; font-weight: bold;">🧾 Transaksi Berhasil!</h3>
+        <button type="button" style="background:transparent; border:none; color:white; font-size:18px; cursor:pointer;" onclick="tutupModalStruk()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="receipt-paper" id="receipt-text"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="tutupModalStruk()">Tutup [ESC]</button>
+        <button type="button" class="btn btn-primary" onclick="window.print()">🖨️ Cetak Struk</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- JAVASCRIPT (VANILLA FETCH API - 100% OFFLINE) -->
+  <!-- ========================================================= -->
+  <script>
+    // State Keranjang Kasir
+    let cart = [];
+    let masterBarang = [];
+    let totalBelanja = 0;
+
+    // Inisialisasi saat halaman dimuat
+    document.addEventListener("DOMContentLoaded", () => {
+      muatDataMasterBarang();
+      setupKeyboardShortcuts();
+      fokusInputScan();
+    });
+
+    function fokusInputScan() {
+      const input = document.getElementById("search-input");
+      if (input) input.focus();
+    }
+
+    // Audio Beep Singkat saat scan / tambah barang (Web Audio API murni)
+    function playBeep() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } catch (e) {
+        // Abaikan jika browser membatasi audio
+      }
+    }
+
+    // Notifikasi Toast
+    function showToast(pesan, isError = false) {
+      const toast = document.getElementById("toast");
+      toast.textContent = pesan;
+      toast.style.display = "block";
+      toast.style.borderLeftColor = isError ? "var(--danger)" : "var(--primary)";
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, 3000);
+    }
+
+    // Format Rupiah
+    function formatRupiah(angka) {
+      return "Rp " + Math.round(angka || 0).toLocaleString("id-ID");
+    }
+
+    // Ambil Data Master Barang untuk Pencarian Cepat
+    function muatDataMasterBarang() {
+      fetch("/api/barang")
+        .then(res => res.json())
+        .then(res => {
+          if (res.success) {
+            masterBarang = res.data;
+          }
+        })
+        .catch(err => console.error("Gagal memuat barang:", err));
+    }
+
+    // Setup Shortcut Keyboard Kasir (Enter, F2, Esc)
+    function setupKeyboardShortcuts() {
+      // 1. Enter pada input scan
+      const scanInput = document.getElementById("search-input");
+      scanInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          cariDanTambahBarang();
+        }
+      });
+
+      // 2. Tombol F2 untuk Proses Transaksi, ESC untuk tutup modal
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "F2") {
+          e.preventDefault();
+          const btnProses = document.getElementById("btn-proses");
+          if (!btnProses.disabled) {
+            prosesTransaksiKasir();
+          } else {
+            document.getElementById("input-bayar").focus();
+          }
+        } else if (e.key === "Escape") {
+          tutupModalStruk();
+          document.getElementById("search-dropdown").style.display = "none";
+          fokusInputScan();
+        }
+      });
+    }
+
+    // 1. Fitur Cari & Masuk Keranjang Seketika
+    function cariDanTambahBarang() {
+      const input = document.getElementById("search-input");
+      const query = input.value.trim().toLowerCase();
+      const dropdown = document.getElementById("search-dropdown");
+
+      if (!query) return;
+
+      // Cek kecocokan Barcode Eksak terlebih dahulu
+      const exactMatch = masterBarang.find(b => b.kode_barang.toLowerCase() === query);
+      if (exactMatch) {
+        masukkanKeKeranjang(exactMatch);
+        input.value = "";
+        dropdown.style.display = "none";
+        fokusInputScan();
+        return;
+      }
+
+      // Cek pencarian parsial berdasarkan nama atau kode
+      const matched = masterBarang.filter(b => 
+        b.nama_barang.toLowerCase().includes(query) || b.kode_barang.toLowerCase().includes(query)
+      );
+
+      if (matched.length === 1) {
+        // Hanya 1 barang cocok -> langsung masukkan keranjang
+        masukkanKeKeranjang(matched[0]);
+        input.value = "";
+        dropdown.style.display = "none";
+        fokusInputScan();
+      } else if (matched.length > 1) {
+        // Tampilkan daftar pilihan ringkas
+        dropdown.innerHTML = "";
+        dropdown.style.display = "block";
+        matched.forEach(b => {
+          const item = document.createElement("div");
+          item.className = "dropdown-item";
+          item.innerHTML = `
+            <div>
+              <strong>${b.nama_barang}</strong>
+              <div style="font-size: 11px; color: var(--text-muted); font-family: monospace;">${b.kode_barang}</div>
+            </div>
+            <div style="text-align: right;">
+              <strong style="color: var(--primary);">${formatRupiah(b.harga_jual)}</strong>
+              <div style="font-size: 11px; color: var(--text-muted);">Sisa: ${b.stok} ${b.satuan}</div>
+            </div>
+          `;
+          item.onclick = () => {
+            masukkanKeKeranjang(b);
+            input.value = "";
+            dropdown.style.display = "none";
+            fokusInputScan();
+          };
+          dropdown.appendChild(item);
+        });
+      } else {
+        showToast("Barang '" + query + "' tidak ditemukan!", true);
+      }
+    }
+
+    // Tambah item ke Keranjang
+    function masukkanKeKeranjang(barang) {
+      if (barang.stok <= 0) {
+        showToast("Stok '" + barang.nama_barang + "' habis (0)! Tidak dapat dijual.", true);
+        return;
+      }
+
+      const existingIndex = cart.findIndex(c => c.barang_id === barang.id);
+
+      if (existingIndex >= 0) {
+        const item = cart[existingIndex];
+        if (item.jumlah + 1 > barang.stok) {
+          showToast("Stok '" + barang.nama_barang + "' hanya tersisa " + barang.stok + " " + barang.satuan + "!", true);
+          return;
+        }
+        item.jumlah += 1;
+        item.subtotal = item.jumlah * item.harga_jual;
+      } else {
+        cart.push({
+          barang_id: barang.id,
+          kode_barang: barang.kode_barang,
+          nama_barang: barang.nama_barang,
+          satuan: barang.satuan,
+          harga_jual: barang.harga_jual,
+          stok_tersedia: barang.stok,
+          jumlah: 1,
+          subtotal: barang.harga_jual
+        });
+      }
+
+      playBeep();
+      renderKeranjang();
+    }
+
+    // 2. Render Tabel Keranjang Belanja
+    function renderKeranjang() {
+      const tbody = document.getElementById("cart-table-body");
+      const countEl = document.getElementById("cart-item-count");
+
+      if (cart.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="text-center text-muted" style="padding: 40px;">
+              Keranjang masih kosong.<br>Scan barcode atau ketik nama barang di atas.
+            </td>
+          </tr>
+        `;
+        countEl.textContent = "0";
+        totalBelanja = 0;
+        updateDisplayTotal();
+        hitungKembalianOtomatis();
+        return;
+      }
+
+      tbody.innerHTML = "";
+      let total = 0;
+      let totalQty = 0;
+
+      cart.forEach((item, index) => {
+        total += item.subtotal;
+        totalQty += item.jumlah;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${item.kode_barang}</code></td>
+          <td>
+            <strong>${item.nama_barang}</strong>
+            <div style="font-size: 11px; color: var(--text-muted);">Sisa stok: ${item.stok_tersedia} ${item.satuan}</div>
+          </td>
+          <td class="text-right">${formatRupiah(item.harga_jual)}</td>
+          <td class="text-center">
+            <div class="qty-control" style="justify-content: center;">
+              <button class="btn-qty" onclick="ubahQty(${index}, -1)">&minus;</button>
+              <input 
+                type="number" 
+                class="qty-input" 
+                value="${item.jumlah}" 
+                min="1" 
+                max="${item.stok_tersedia}"
+                onchange="setQtyLangsung(${index}, this.value)"
+              >
+              <button class="btn-qty" onclick="ubahQty(${index}, 1)">&plus;</button>
+            </div>
+          </td>
+          <td class="text-right font-bold" style="color: #0f172a;">${formatRupiah(item.subtotal)}</td>
+          <td class="text-center">
+            <button class="btn-del" onclick="hapusItemKeranjang(${index})" title="Hapus item">&times;</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      countEl.textContent = totalQty;
+      totalBelanja = total;
+      updateDisplayTotal();
+      hitungKembalianOtomatis();
+    }
+
+    // Ubah Jumlah Beli via tombol +/-
+    function ubahQty(index, delta) {
+      const item = cart[index];
+      if (!item) return;
+
+      const newQty = item.jumlah + delta;
+      if (newQty <= 0) {
+        hapusItemKeranjang(index);
+      } else if (newQty > item.stok_tersedia) {
+        showToast("Stok '" + item.nama_barang + "' hanya ada " + item.stok_tersedia + "!", true);
+      } else {
+        item.jumlah = newQty;
+        item.subtotal = item.jumlah * item.harga_jual;
+        renderKeranjang();
+      }
+    }
+
+    // Ubah Jumlah Beli via Input Langsung
+    function setQtyLangsung(index, val) {
+      const item = cart[index];
+      if (!item) return;
+
+      let qty = parseInt(val) || 1;
+      if (qty <= 0) {
+        hapusItemKeranjang(index);
+      } else if (qty > item.stok_tersedia) {
+        showToast("Stok '" + item.nama_barang + "' hanya ada " + item.stok_tersedia + "!", true);
+        item.jumlah = item.stok_tersedia;
+        item.subtotal = item.jumlah * item.harga_jual;
+        renderKeranjang();
+      } else {
+        item.jumlah = qty;
+        item.subtotal = item.jumlah * item.harga_jual;
+        renderKeranjang();
+      }
+    }
+
+    // Hapus Baris Barang
+    function hapusItemKeranjang(index) {
+      cart.splice(index, 1);
+      renderKeranjang();
+    }
+
+    // Kosongkan Keranjang Belanja
+    function kosongkanKeranjang() {
+      if (cart.length === 0) return;
+      if (confirm("Kosongkan semua barang dari keranjang kasir?")) {
+        cart = [];
+        document.getElementById("input-bayar").value = "";
+        renderKeranjang();
+        fokusInputScan();
+      }
+    }
+
+    // Update Display Total Huruf Besar
+    function updateDisplayTotal() {
+      document.getElementById("display-total-belanja").textContent = formatRupiah(totalBelanja);
+    }
+
+    // 3. Perhitungan Kembalian Otomatis Realtime
+    function hitungKembalianOtomatis() {
+      const inputBayar = document.getElementById("input-bayar");
+      const bayar = parseInt(inputBayar.value) || 0;
+      const displayKembali = document.getElementById("display-kembalian");
+      const labelKembali = document.getElementById("label-kembali");
+      const changeBox = document.getElementById("change-box");
+      const btnProses = document.getElementById("btn-proses");
+
+      if (totalBelanja === 0 || cart.length === 0) {
+        displayKembali.textContent = "Rp 0";
+        labelKembali.textContent = "KEMBALIAN:";
+        changeBox.style.borderColor = "var(--border)";
+        changeBox.style.backgroundColor = "#f8fafc";
+        btnProses.disabled = true;
+        return;
+      }
+
+      const selisih = bayar - totalBelanja;
+
+      if (selisih >= 0) {
+        // Uang Pas / Lebih (Kembalian Cukup)
+        displayKembali.textContent = formatRupiah(selisih);
+        displayKembali.style.color = "var(--success)";
+        labelKembali.textContent = "KEMBALIAN:";
+        labelKembali.style.color = "var(--success)";
+        changeBox.style.borderColor = "#86efac";
+        changeBox.style.backgroundColor = "#f0fdf4";
+        btnProses.disabled = false;
+      } else {
+        // Uang Kurang
+        displayKembali.textContent = "Kurang " + formatRupiah(Math.abs(selisih));
+        displayKembali.style.color = "var(--danger)";
+        labelKembali.textContent = "STATUS BAYAR:";
+        labelKembali.style.color = "var(--danger)";
+        changeBox.style.borderColor = "#fca5a5";
+        changeBox.style.backgroundColor = "#fef2f2";
+        btnProses.disabled = true;
+      }
+    }
+
+    // Set Uang Pas
+    function setUangPas() {
+      if (totalBelanja <= 0) return;
+      document.getElementById("input-bayar").value = totalBelanja;
+      hitungKembalianOtomatis();
+    }
+
+    // Tambah Nominal Uang Cepat
+    function tambahUang(nominal) {
+      const input = document.getElementById("input-bayar");
+      const current = parseInt(input.value) || 0;
+      input.value = current + nominal;
+      hitungKembalianOtomatis();
+    }
+
+    // 4. Proses Transaksi Kasir (POST /api/transaksi)
+    function prosesTransaksiKasir() {
+      if (cart.length === 0) {
+        showToast("Keranjang belanja masih kosong!", true);
+        return;
+      }
+
+      const uangTunai = parseInt(document.getElementById("input-bayar").value) || 0;
+
+      if (uangTunai < totalBelanja) {
+        showToast("Uang pembayaran kurang!", true);
+        document.getElementById("input-bayar").focus();
+        return;
+      }
+
+      const btnProses = document.getElementById("btn-proses");
+      btnProses.disabled = true;
+      btnProses.textContent = "Memproses...";
+
+      const payload = {
+        items: cart.map(c => ({
+          barang_id: c.barang_id,
+          jumlah: c.jumlah
+        })),
+        uang_tunai: uangTunai
+      };
+
+      fetch("/api/transaksi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        btnProses.disabled = false;
+        btnProses.textContent = "✅ PROSES TRANSAKSI [F2]";
+
+        if (res.success) {
+          tampilkanModalStruk(res.data);
+
+          // 4. Reset & Kosongkan Keranjang Belanja
+          cart = [];
+          document.getElementById("input-bayar").value = "";
+          renderKeranjang();
+
+          // 4. Perbarui Data Master Stok dari Database
+          muatDataMasterBarang();
+          showToast("Transaksi " + res.data.nomor_nota + " berhasil!");
+        } else {
+          showToast(res.message, true);
+        }
+      })
+      .catch(err => {
+        btnProses.disabled = false;
+        btnProses.textContent = "✅ PROSES TRANSAKSI [F2]";
+        showToast("Error: " + err.message, true);
+      });
+    }
+
+    // Tampilkan Modal Struk Ringkas
+    function tampilkanModalStruk(data) {
+      const receiptEl = document.getElementById("receipt-text");
+      const line = "--------------------------------";
+
+      const rincianItems = data.items.map(it => {
+        const line1 = it.nama_barang.substring(0, 32);
+        const qtyHarga = `${it.jumlah} ${it.satuan} x ${it.harga_jual.toLocaleString('id-ID')}`;
+        const sub = it.subtotal.toLocaleString('id-ID');
+        const spasi = Math.max(1, 32 - qtyHarga.length - sub.length);
+        return `${line1}\n${qtyHarga}${' '.repeat(spasi)}${sub}`;
+      }).join("\n");
+
+      const totalStr = formatRupiah(data.total_belanja);
+      const tunaiStr = formatRupiah(data.uang_tunai);
+      const kembaliStr = formatRupiah(data.kembalian);
+
+      const strukContent = `
+        TOKO KELONTONG BERKAH
+      Operasional Offline LAN
+${line}
+No Nota : ${data.nomor_nota}
+Waktu   : ${data.waktu}
+${line}
+${rincianItems}
+${line}
+TOTAL   : ${totalStr}
+TUNAI   : ${tunaiStr}
+KEMBALI : ${kembaliStr}
+${line}
+ Terima Kasih Atas Kunjungan Anda
+`.trim();
+
+      receiptEl.textContent = strukContent;
+      document.getElementById("modal-struk").classList.add("active");
+    }
+
+    function tutupModalStruk() {
+      document.getElementById("modal-struk").classList.remove("active");
+      fokusInputScan();
+    }
+  </script>
+</body>
+</html>

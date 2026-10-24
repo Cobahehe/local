@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>POS & Stok Gudang Lokal (KISS)</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <!-- Header Aplikasi -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="logo-box">POS</div>
+      <div>
+        <h1 class="brand-title">Toko & Gudang Lokal</h1>
+        <span class="brand-sub">Sistem Offline 100% • SQLite WAL</span>
+      </div>
+    </div>
+    
+    <!-- Navigasi 2 Modul Utama -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="nav-btn active" id="btn-tab-kasir" onclick="switchTab('kasir')">
+        🛒 1. KASIR (Penjualan)
+      </button>
+      <button class="nav-btn" id="btn-tab-gudang" onclick="switchTab('gudang')">
+        📦 2. STOK GUDANG (Master & Masuk)
+      </button>
+    </nav>
+
+    <!-- Info LAN Wi-Fi & Device Toggle -->
+    <div class="header-info">
+      <div class="badge-lan" id="lan-info-badge" title="Alamat untuk dibuka di Tablet Gudang via Wi-Fi">
+        📡 Wi-Fi: <span id="lan-ip-text">Mendeteksi...</span>
+      </div>
+      <button class="btn-mode-toggle" id="btn-mode" onclick="toggleTouchMode()" title="Ubah ukuran tombol untuk Layar Sentuh Tablet">
+        📱 Mode Tablet
+      </button>
+    </div>
+  </header>
+
+  <!-- Konten Utama -->
+  <main class="main-container">
+    
+    <!-- ======================================================== -->
+    <!-- MODUL 1: KASIR (PENJUALAN & BARANG KELUAR) -->
+    <!-- ======================================================== -->
+    <section id="section-kasir" class="tab-content active">
+      <div class="kasir-grid">
+        <!-- Kolom Kiri: Input & Katalog Cepat -->
+        <div class="kasir-left">
+          <div class="card p-3">
+            <label for="kasir-scan-input" class="label-bold">Scan Barcode / Cari Barang Cepat (Tekan Enter):</label>
+            <div class="input-scan-group">
+              <input type="text" id="kasir-scan-input" class="input-large" placeholder="Scan barcode atau ketik nama barang..." autocomplete="off">
+              <button class="btn btn-secondary" onclick="cariBarangKasir()">Cari</button>
+            </div>
+            <div id="kasir-search-results" class="search-dropdown-list hidden"></div>
+          </div>
+
+          <!-- Daftar Barang Populer / Cepat Dipilih -->
+          <div class="card p-3 mt-3 flex-1 flex-col">
+            <div class="card-header-flex">
+              <span class="font-bold">Katalog Barang Cepat:</span>
+              <span class="text-muted text-sm" id="katalog-count">Memuat barang...</span>
+            </div>
+            <div class="katalog-grid" id="katalog-items"></div>
+          </div>
+        </div>
+
+        <!-- Kolom Kanan: Keranjang Belanja & Pembayaran -->
+        <div class="kasir-right">
+          <div class="card cart-card">
+            <div class="cart-header">
+              <span class="font-bold">Keranjang Penjualan</span>
+              <button class="btn btn-sm btn-outline-danger" onclick="kosongkanKeranjang()">Hapus Semua</button>
+            </div>
+
+            <!-- Tabel Daftar Item Keranjang -->
+            <div class="cart-items-wrapper">
+              <table class="table-compact">
+                <thead>
+                  <tr>
+                    <th>Barang</th>
+                    <th class="text-center" style="width: 140px;">Jumlah</th>
+                    <th class="text-right">Harga</th>
+                    <th class="text-right">Subtotal</th>
+                    <th style="width: 40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="cart-table-body">
+                  <tr class="empty-row">
+                    <td colspan="5" class="text-center text-muted p-5">
+                      Keranjang kosong.<br>Scan barcode atau klik barang di katalog.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Footer Kasir: Total & Pembayaran -->
+            <div class="cart-footer">
+              <div class="total-banner">
+                <span class="total-label">TOTAL TAGIHAN:</span>
+                <span class="total-value" id="label-total-belanja">Rp 0</span>
+              </div>
+
+              <div class="payment-controls">
+                <div class="form-row">
+                  <label for="input-bayar" class="label-bold">Uang Diterima (Rp):</label>
+                  <input type="number" id="input-bayar" class="input-large font-bold" placeholder="0" oninput="hitungKembalianRealtime()">
+                </div>
+
+                <!-- Tombol Pecahan Cepat Uang Tunai -->
+                <div class="quick-cash-row">
+                  <button class="btn btn-chip" onclick="setUangPas()">Uang Pas</button>
+                  <button class="btn btn-chip" onclick="tambahUangBayar(10000)">+10rb</button>
+                  <button class="btn btn-chip" onclick="tambahUangBayar(20000)">+20rb</button>
+                  <button class="btn btn-chip" onclick="tambahUangBayar(50000)">+50rb</button>
+                  <button class="btn btn-chip" onclick="tambahUangBayar(100000)">+100rb</button>
+                </div>
+
+                <!-- Kembalian -->
+                <div class="change-banner" id="banner-kembalian">
+                  <span>KEMBALIAN:</span>
+                  <span id="label-kembalian" class="font-bold text-lg">Rp 0</span>
+                </div>
+
+                <!-- Tombol Proses Transaksi -->
+                <button class="btn btn-primary btn-block btn-pay" id="btn-proses-bayar" onclick="prosesPenjualan()">
+                  ✅ BAYAR & CETAK STRUK [F2]
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================== -->
+    <!-- MODUL 2: STOK GUDANG (MASTER BARANG & BARANG MASUK) -->
+    <!-- ======================================================== -->
+    <section id="section-gudang" class="tab-content">
+      <div class="gudang-container">
+        
+        <!-- Sub-Navigasi Gudang: Master Barang vs Barang Masuk -->
+        <div class="sub-nav-bar">
+          <div class="sub-tabs">
+            <button class="sub-tab-btn active" id="sub-btn-master" onclick="switchGudangSubTab('master')">
+              📋 Master Data Barang
+            </button>
+            <button class="sub-tab-btn" id="sub-btn-masuk" onclick="switchGudangSubTab('masuk')">
+              📥 Input Barang Masuk (Restock)
+            </button>
+          </div>
+          <div class="gudang-actions">
+            <button class="btn btn-success" onclick="bukaModalTambahBarang()">
+              ➕ Tambah Barang Baru
+            </button>
+          </div>
+        </div>
+
+        <!-- 2A. TABEL MASTER BARANG -->
+        <div id="gudang-sub-master" class="gudang-sub-content active">
+          <div class="filter-bar card p-3 mb-3">
+            <div class="filter-inputs">
+              <input type="text" id="gudang-search-input" class="input" placeholder="Cari nama atau barcode..." oninput="filterMasterBarang()">
+              <select id="gudang-filter-kategori" class="input" onchange="filterMasterBarang()">
+                <option value="Semua">Semua Kategori</option>
+                <option value="Sembako">Sembako</option>
+                <option value="Makanan">Makanan</option>
+                <option value="Minuman">Minuman</option>
+                <option value="Kebersihan">Kebersihan</option>
+                <option value="Umum">Umum</option>
+              </select>
+            </div>
+            <div class="stock-summary">
+              <span class="badge badge-success" id="stat-total-barang">Total: 0 Item</span>
+              <span class="badge badge-warning" id="stat-menipis-barang">Menipis: 0</span>
+            </div>
+          </div>
+
+          <div class="card table-container">
+            <table class="table-full">
+              <thead>
+                <tr>
+                  <th style="width: 130px;">Kode / Barcode</th>
+                  <th>Nama Barang</th>
+                  <th style="width: 100px;">Kategori</th>
+                  <th class="text-right" style="width: 110px;">Harga Beli</th>
+                  <th class="text-right" style="width: 110px;">Harga Jual</th>
+                  <th class="text-center" style="width: 90px;">Stok</th>
+                  <th class="text-center" style="width: 80px;">Min</th>
+                  <th class="text-center" style="width: 100px;">Status</th>
+                  <th class="text-center" style="width: 120px;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="master-table-body">
+                <!-- Diisi via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2B. FORM & RIWAYAT BARANG MASUK -->
+        <div id="gudang-sub-masuk" class="gudang-sub-content">
+          <div class="grid-2-col">
+            <!-- Form Input Barang Masuk -->
+            <div class="card p-4">
+              <h3 class="card-title">📥 Catat Barang Masuk (Restock Gudang)</h3>
+              <form id="form-barang-masuk" onsubmit="simpanBarangMasuk(event)">
+                <div class="form-group">
+                  <label for="masuk-pilih-barang">Pilih Barang:</label>
+                  <select id="masuk-pilih-barang" class="input" required onchange="onSelectBarangMasuk()">
+                    <option value="">-- Pilih Barang dari Master --</option>
+                  </select>
+                </div>
+
+                <div class="form-row-2">
+                  <div class="form-group">
+                    <label for="masuk-qty">Jumlah Masuk (<span id="masuk-satuan-label">pcs</span>):</label>
+                    <input type="number" id="masuk-qty" class="input font-bold" min="1" required placeholder="Contoh: 24">
+                  </div>
+                  <div class="form-group">
+                    <label for="masuk-harga-beli">Harga Beli Satuan (Rp):</label>
+                    <input type="number" id="masuk-harga-beli" class="input" min="0" placeholder="0">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="masuk-supplier">Nama Supplier / Pemasok (Opsional):</label>
+                  <input type="text" id="masuk-supplier" class="input" placeholder="Contoh: Agen Sembako Makmur">
+                </div>
+
+                <div class="form-group">
+                  <label for="masuk-catatan">Catatan / No. Faktur Masuk:</label>
+                  <input type="text" id="masuk-catatan" class="input" placeholder="Contoh: Faktur No. 2026/X/01">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-lg mt-3">
+                  💾 Simpan & Tambah ke Stok
+                </button>
+              </form>
+            </div>
+
+            <!-- Riwayat 20 Barang Masuk Terakhir -->
+            <div class="card p-4 flex-col">
+              <h3 class="card-title">📜 Riwayat Barang Masuk Terakhir</h3>
+              <div class="table-container flex-1">
+                <table class="table-compact">
+                  <thead>
+                    <tr>
+                      <th>Waktu</th>
+                      <th>Barang</th>
+                      <th class="text-center">Qty Masuk</th>
+                      <th>Supplier</th>
+                    </tr>
+                  </thead>
+                  <tbody id="riwayat-masuk-tbody">
+                    <!-- Diisi via JavaScript -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: TAMBAH / EDIT BARANG -->
+  <!-- ======================================================== -->
+  <div id="modal-barang" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-barang-title">Tambah Barang Baru</h3>
+        <button class="btn-close" onclick="tutupModalBarang()">✕</button>
+      </div>
+      <form id="form-barang" onsubmit="simpanDataBarang(event)">
+        <input type="hidden" id="barang-id">
+        <div class="form-group">
+          <label for="barang-kode">Kode Barcode / SKU (*):</label>
+          <input type="text" id="barang-kode" class="input" required placeholder="Contoh: 8998866200225">
+        </div>
+        <div class="form-group">
+          <label for="barang-nama">Nama Barang (*):</label>
+          <input type="text" id="barang-nama" class="input" required placeholder="Contoh: Indomie Goreng 85g">
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="barang-kategori">Kategori:</label>
+            <input type="text" id="barang-kategori" class="input" list="kategori-list" placeholder="Makanan, Minuman, Sembako, dll">
+            <datalist id="kategori-list">
+              <option value="Sembako">
+              <option value="Makanan">
+              <option value="Minuman">
+              <option value="Kebersihan">
+              <option value="Umum">
+            </datalist>
+          </div>
+          <div class="form-group">
+            <label for="barang-satuan">Satuan:</label>
+            <input type="text" id="barang-satuan" class="input" placeholder="pcs, bks, btl, dus, kg" value="pcs">
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="barang-harga-beli">Harga Beli (Rp):</label>
+            <input type="number" id="barang-harga-beli" class="input" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label for="barang-harga-jual">Harga Jual (Rp) (*):</label>
+            <input type="number" id="barang-harga-jual" class="input" min="0" required value="0">
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label for="barang-stok">Stok Awal:</label>
+            <input type="number" id="barang-stok" class="input" min="0" value="0">
+          </div>
+          <div class="form-group">
+            <label for="barang-stok-min">Stok Minimum (Alert):</label>
+            <input type="number" id="barang-stok-min" class="input" min="0" value="5">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="tutupModalBarang()">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Barang</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: STRUK NOTA KASIR THERMAL (SIAP PRINT) -->
+  <!-- ======================================================== -->
+  <div id="modal-struk" class="modal-overlay hidden">
+    <div class="modal-card modal-receipt">
+      <div class="modal-header">
+        <h3>🧾 Struk Pembelian</h3>
+        <button class="btn-close" onclick="tutupModalStruk()">✕</button>
+      </div>
+      <div class="receipt-paper" id="receipt-paper-content">
+        <!-- Konten Struk Text -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="tutupModalStruk()">Tutup</button>
+        <button class="btn btn-primary" onclick="cetakStrukThermal()">🖨️ Cetak Struk (Printer)</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

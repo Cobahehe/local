@@ -1,0 +1,6 @@
+{
+  "name": "POS & Stok Gudang Lokal (KISS)",
+  "description": "Aplikasi Kasir dan Stok Gudang offline-first ringan untuk PC Windows dan Tablet Wi-Fi lokal toko fisik.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gudang - Stok & Master Barang (KISS)</title>
+  <style>
+    /* Styling Ringan, Responsif & 100% Offline */
+    :root {
+      --primary: #059669;
+      --primary-hover: #047857;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --success: #16a34a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding-bottom: 40px;
+    }
+
+    /* 1. Navigasi Atas */
+    .navbar {
+      background-color: #0f172a;
+      color: #ffffff;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-badge {
+      background: var(--primary);
+      color: white;
+      font-weight: 900;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .brand-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-item {
+      color: #94a3b8;
+      background: #1e293b;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      border: 1px solid #334155;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-item:hover {
+      background: #334155;
+      color: white;
+    }
+
+    .nav-item.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* Container Utama */
+    .container {
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 16px;
+    }
+
+    /* Header Bar Gudang & Tombol Aksi */
+    .action-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .page-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    /* Tombol Responsif (Ukuran Lega untuk Tablet) */
+    .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    .btn-secondary { background: #334155; color: white; }
+    .btn-secondary:hover { background: #1e293b; }
+
+    .btn-outline { background: white; border-color: var(--border); color: #334155; }
+    .btn-outline:hover { background: #f1f5f9; }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+
+    /* Notifikasi Toast */
+    .toast {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      background: #0f172a;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 999;
+      display: none;
+      font-weight: 600;
+      font-size: 14px;
+      border-left: 5px solid var(--primary);
+    }
+
+    /* Filter & Live Search Bar */
+    .filter-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 260px;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 15px;
+      outline: none;
+      transition: border 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
+    }
+
+    .summary-badges {
+      display: flex;
+      gap: 8px;
+    }
+
+    .badge-stat {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+
+    .badge-stat-total { background: #f1f5f9; color: #334155; border-color: #e2e8f0; }
+    .badge-stat-menipis { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+
+    /* Tabel Barang */
+    .table-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow-x: auto;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      padding: 14px 16px;
+      border-bottom: 2px solid var(--border);
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 14px;
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background-color: #f8fafc;
+    }
+
+    .barcode-tag {
+      font-family: monospace;
+      font-size: 13px;
+      color: #475569;
+      background: #f1f5f9;
+      padding: 3px 6px;
+      border-radius: 4px;
+    }
+
+    .stok-num {
+      font-size: 16px;
+      font-weight: 800;
+    }
+
+    /* Indikator Status Stok */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .status-aman { background: #dcfce7; color: #166534; }
+    .status-menipis { background: #fef3c7; color: #92400e; }
+    .status-habis { background: #fee2e2; color: #991b1b; }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: white;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      overflow: hidden;
+      animation: modalFade 0.2s ease-out;
+    }
+
+    @keyframes modalFade {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+      background: #0f172a;
+      color: white;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .btn-close {
+      background: transparent;
+      border: none;
+      color: #94a3b8;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .btn-close:hover { color: white; }
+
+    .modal-body {
+      padding: 20px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 5px;
+      color: #334155;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .modal-footer {
+      padding: 14px 20px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* Utility */
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .font-bold { font-weight: 700; }
+    .text-muted { color: var(--text-muted); font-size: 12px; }
+
+    /* Penyesuaian Responsif Layar Tablet & Mobile */
+    @media (max-width: 768px) {
+      .container { padding: 0 10px; }
+      .btn { padding: 12px 18px; font-size: 15px; } /* Target sentuh lebih besar di tablet */
+      th, td { padding: 12px 10px; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Notifikasi Ringkas -->
+  <div id="toast" class="toast"></div>
+
+  <!-- 1. Navigasi Atas -->
+  <header class="navbar">
+    <div class="brand">
+      <div class="brand-badge">POS</div>
+      <div class="brand-title">Toko & Gudang Fisik (KISS)</div>
+    </div>
+    <nav class="nav-links">
+      <a href="/gudang" class="nav-item active">📦 Halaman Gudang</a>
+      <a href="/kasir" class="nav-item">🛒 Halaman Kasir</a>
+    </nav>
+  </header>
+
+  <!-- Konten Utama -->
+  <main class="container">
+    
+    <!-- Action Header -->
+    <div class="action-header">
+      <div>
+        <h1 class="page-title">📦 Master Barang & Stok Gudang</h1>
+        <p class="text-muted">Kelola data produk dan pencatatan kulakan barang masuk.</p>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-secondary" onclick="bukaModalKulakan()">
+          📥 + Stok Masuk (Kulakan)
+        </button>
+        <button class="btn btn-primary" onclick="bukaModalTambahBarang()">
+          ➕ Tambah Barang Baru
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter & Live Search Card -->
+    <div class="filter-card">
+      <div class="search-box">
+        <input 
+          type="text" 
+          id="search-input" 
+          class="search-input" 
+          placeholder="🔍 Cari barcode atau nama barang..."
+          oninput="handleSearch(this.value)"
+          autocomplete="off"
+        >
+      </div>
+      <div class="summary-badges">
+        <span class="badge-stat badge-stat-total" id="badge-total">Total: 0 Barang</span>
+        <span class="badge-stat badge-stat-menipis" id="badge-menipis">Stok Menipis: 0</span>
+      </div>
+    </div>
+
+    <!-- Tabel Daftar Barang -->
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 130px;">Kode Barcode</th>
+            <th>Nama Barang</th>
+            <th style="width: 80px;">Satuan</th>
+            <th class="text-right" style="width: 120px;">Harga Modal</th>
+            <th class="text-right" style="width: 120px;">Harga Jual</th>
+            <th class="text-center" style="width: 90px;">Stok</th>
+            <th class="text-center" style="width: 110px;">Status</th>
+            <th class="text-center" style="width: 120px;">Aksi Cepat</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr>
+            <td colspan="8" class="text-center text-muted" style="padding: 30px;">
+              Memuat data barang dari server...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- MODAL 1: TAMBAH BARANG BARU -->
+  <!-- ========================================================= -->
+  <div id="modal-tambah-barang" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">➕ Tambah Barang Baru ke Gudang</h3>
+        <button class="btn-close" onclick="tutupModal('modal-tambah-barang')">&times;</button>
+      </div>
+      <form id="form-tambah-barang" onsubmit="simpanBarangBaru(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="tb-kode">Kode Barcode / SKU (*):</label>
+            <input type="text" id="tb-kode" class="form-input" required placeholder="Contoh: 8998866200225" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tb-nama">Nama Barang (*):</label>
+            <input type="text" id="tb-nama" class="form-input" required placeholder="Contoh: Indomie Goreng Original 85g" autocomplete="off">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="tb-satuan">Satuan (*):</label>
+              <input type="text" id="tb-satuan" list="satuan-options" class="form-input" required placeholder="pcs, sak, kg, dus" value="pcs">
+              <datalist id="satuan-options">
+                <option value="pcs">
+                <option value="sak">
+                <option value="kg">
+                <option value="dus">
+                <option value="btl">
+                <option value="bks">
+              </datalist>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="tb-stok">Stok Awal:</label>
+              <input type="number" id="tb-stok" class="form-input font-bold" min="0" value="0">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="tb-modal">Harga Modal (Rp):</label>
+              <input type="number" id="tb-modal" class="form-input" min="0" value="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="tb-jual">Harga Jual (Rp) (*):</label>
+              <input type="number" id="tb-jual" class="form-input font-bold" min="0" required value="0">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="tutupModal('modal-tambah-barang')">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Barang</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODAL 2: STOK MASUK / KULAKAN GUDANG -->
+  <!-- ========================================================= -->
+  <div id="modal-kulakan" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">📥 Catat Stok Masuk (Kulakan)</h3>
+        <button class="btn-close" onclick="tutupModal('modal-kulakan')">&times;</button>
+      </div>
+      <form id="form-kulakan" onsubmit="simpanStokMasuk(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="kulakan-barang-select">Pilih Barang (*):</label>
+            <select id="kulakan-barang-select" class="form-input" required>
+              <option value="">-- Pilih Barang dari Master --</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="kulakan-jumlah">Jumlah Masuk (*):</label>
+            <input type="number" id="kulakan-jumlah" class="form-input font-bold" min="1" required placeholder="Contoh: 20">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="kulakan-keterangan">Keterangan / Supplier / No. Faktur:</label>
+            <input type="text" id="kulakan-keterangan" class="form-input" placeholder="Contoh: Kulakan dari Toko Grosir Sumber Rejeki">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="tutupModal('modal-kulakan')">Batal</button>
+          <button type="submit" class="btn btn-primary">💾 Simpan & Tambah Stok</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- JAVASCRIPT (VANILLA FETCH API - 100% OFFLINE) -->
+  <!-- ========================================================= -->
+  <script>
+    // Variabel Penampung Data Lokal
+    let dataBarangSemua = [];
+    let debounceTimer = null;
+
+    // Inisialisasi saat halaman selesai dimuat
+    document.addEventListener("DOMContentLoaded", () => {
+      muatDataBarang();
+    });
+
+    // Notifikasi Toast Ringan
+    function showToast(pesan, isError = false) {
+      const toast = document.getElementById("toast");
+      toast.textContent = pesan;
+      toast.style.display = "block";
+      toast.style.borderLeftColor = isError ? "var(--danger)" : "var(--primary)";
+      setTimeout(() => {
+        toast.style.display = "none";
+      }, 3500);
+    }
+
+    // Format Rupiah Indonesia
+    function formatRupiah(angka) {
+      return "Rp " + Math.round(angka || 0).toLocaleString("id-ID");
+    }
+
+    // Modal Control
+    function bukaModal(id) {
+      document.getElementById(id).classList.add("active");
+    }
+
+    function tutupModal(id) {
+      document.getElementById(id).classList.remove("active");
+    }
+
+    function bukaModalTambahBarang() {
+      document.getElementById("form-tambah-barang").reset();
+      bukaModal("modal-tambah-barang");
+      document.getElementById("tb-kode").focus();
+    }
+
+    function bukaModalKulakan(barangId = null) {
+      document.getElementById("form-kulakan").reset();
+      isiDropdownBarang(barangId);
+      bukaModal("modal-kulakan");
+      document.getElementById("kulakan-jumlah").focus();
+    }
+
+    // Isi Dropdown pada Modal Kulakan
+    function isiDropdownBarang(selectedId = null) {
+      const select = document.getElementById("kulakan-barang-select");
+      select.innerHTML = '<option value="">-- Pilih Barang dari Master --</option>';
+
+      dataBarangSemua.forEach(b => {
+        const opt = document.createElement("option");
+        opt.value = b.id;
+        opt.textContent = `${b.nama_barang} (${b.kode_barang}) - Sisa Stok: ${b.stok} ${b.satuan}`;
+        if (selectedId && b.id === Number(selectedId)) {
+          opt.selected = true;
+        }
+        select.appendChild(opt);
+      });
+    }
+
+    // 1. Mengambil Daftar Barang dari Endpoint GET /api/barang
+    function muatDataBarang(query = "") {
+      const url = query ? `/api/barang?q=${encodeURIComponent(query)}` : "/api/barang";
+
+      fetch(url)
+        .then(res => res.json())
+        .then(res => {
+          if (res.success) {
+            dataBarangSemua = res.data;
+            renderTabel(dataBarangSemua);
+            updateSummaryStatistik(dataBarangSemua);
+          } else {
+            showToast("Gagal memuat barang: " + (res.message || ""), true);
+          }
+        })
+        .catch(err => {
+          console.error(err);
+          showToast("Error koneksi server: " + err.message, true);
+        });
+    }
+
+    // 2. Render Tabel Barang dengan Indikator Warna Stok
+    function renderTabel(list) {
+      const tbody = document.getElementById("table-body");
+      if (!tbody) return;
+
+      if (!list || list.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="text-center text-muted" style="padding: 30px;">
+              Tidak ada data barang yang cocok.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = "";
+      list.forEach(b => {
+        // Logika Status Warna Stok
+        let statusBadge = "";
+        let stokClass = "";
+
+        if (b.stok <= 0) {
+          statusBadge = '<span class="status-badge status-habis">Habis</span>';
+          stokClass = 'color: var(--danger);';
+        } else if (b.stok <= 5) {
+          statusBadge = '<span class="status-badge status-menipis">Menipis</span>';
+          stokClass = 'color: var(--warning);';
+        } else {
+          statusBadge = '<span class="status-badge status-aman">Aman</span>';
+          stokClass = 'color: var(--success);';
+        }
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td><span class="barcode-tag">${b.kode_barang}</span></td>
+          <td><strong>${b.nama_barang}</strong></td>
+          <td><span class="text-muted">${b.satuan}</span></td>
+          <td class="text-right text-muted">${formatRupiah(b.harga_modal)}</td>
+          <td class="text-right font-bold">${formatRupiah(b.harga_jual)}</td>
+          <td class="text-center"><span class="stok-num" style="${stokClass}">${b.stok}</span></td>
+          <td class="text-center">${statusBadge}</td>
+          <td class="text-center">
+            <button class="btn btn-sm btn-outline" onclick="bukaModalKulakan(${b.id})" title="Tambah stok kulakan">
+              📥 +Stok
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 3. Update Badge Ringkasan Statistik
+    function updateSummaryStatistik(list) {
+      const total = list.length;
+      const menipis = list.filter(b => b.stok <= 5).length;
+
+      document.getElementById("badge-total").textContent = `Total: ${total} Barang`;
+      document.getElementById("badge-menipis").textContent = `Stok Menipis: ${menipis}`;
+    }
+
+    // 4. Live Search dengan Debounce (Responsif & Ringan)
+    function handleSearch(val) {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        muatDataBarang(val.trim());
+      }, 250);
+    }
+
+    // 5. Simpan Barang Baru ke Endpoint POST /api/barang
+    function simpanBarangBaru(e) {
+      e.preventDefault();
+
+      const payload = {
+        kode_barang: document.getElementById("tb-kode").value.trim(),
+        nama_barang: document.getElementById("tb-nama").value.trim(),
+        satuan: document.getElementById("tb-satuan").value.trim() || "pcs",
+        harga_modal: parseInt(document.getElementById("tb-modal").value) || 0,
+        harga_jual: parseInt(document.getElementById("tb-jual").value) || 0,
+        stok: parseInt(document.getElementById("tb-stok").value) || 0
+      };
+
+      fetch("/api/barang", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          showToast(res.message);
+          tutupModal("modal-tambah-barang");
+          muatDataBarang();
+        } else {
+          showToast(res.message, true);
+        }
+      })
+      .catch(err => {
+        showToast("Error: " + err.message, true);
+      });
+    }
+
+    // 6. Simpan Stok Masuk (Kulakan) ke Endpoint POST /api/stok/masuk
+    function simpanStokMasuk(e) {
+      e.preventDefault();
+
+      const bId = document.getElementById("kulakan-barang-select").value;
+      const jumlah = parseInt(document.getElementById("kulakan-jumlah").value) || 0;
+      const keterangan = document.getElementById("kulakan-keterangan").value.trim() || "Kulakan Gudang";
+
+      if (!bId || jumlah <= 0) {
+        showToast("Pilih barang dan jumlah masuk yang valid (>0)!", true);
+        return;
+      }
+
+      const payload = {
+        barang_id: parseInt(bId),
+        jumlah: jumlah,
+        keterangan: keterangan
+      };
+
+      fetch("/api/stok/masuk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) {
+          showToast(res.message);
+          tutupModal("modal-kulakan");
+          muatDataBarang();
+        } else {
+          showToast(res.message, true);
+        }
+      })
+      .catch(err => {
+        showToast("Error: " + err.message, true);
+      });
+    }
+
+    // Tutup modal jika tombol ESC ditekan
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        tutupModal("modal-tambah-barang");
+        tutupModal("modal-kulakan");
+      }
+    });
+  </script>
+</body>
+</html>
